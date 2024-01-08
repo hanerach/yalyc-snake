@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import sys
 
 import pygame
@@ -38,17 +39,59 @@ def terminate():
 
 
 def start_screen():
-    intro_text = ["Добро пожаловать в Змейку", "",
+    intro_text = ["Добро пожаловать в Змейку",
+                  "",
                   "Выбор уровня:",
                   "  Пустое поле",
                   "  Поле с границами",
-                  "  Поле со стенками внутри"]
+                  "  Поле со стенками внутри",
+                  "",
+                  "Таблица лидеров"]
 
-    fon = pygame.transform.scale(load_image('fon2.jpg'), (WIDTH, HEIGHT))
+    fon = pygame.transform.scale(load_image('main_menu_background.jpg'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))
+    font = pygame.font.Font(None, 30)
+    text_coord = 150
+    BUTTONS = []
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color('white'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 150
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+        BUTTONS.append([*intro_rect, line])
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                coords = event.pos
+                for i in BUTTONS:
+                    if i[0] <= coords[0] <= i[0] + i[2] and i[1] <= coords[1] <= i[1] + i[3]:
+                        if i[4] == intro_text[3]:
+                            return 'lvl_easy.txt'
+                        elif i[4] == intro_text[4]:
+                            return 'lvl_medium.txt'
+                        elif i[4] == intro_text[5]:
+                            return 'lvl_hard.txt'
+                        elif i[4] == intro_text[7]:
+                            leaderboard()
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def leaderboard():
+    lb_text = cur.execute("""SELECT * FROM statistic""").fetchall()
+
+    fon = pygame.transform.scale(load_image('leaderboard_background.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
     font = pygame.font.Font(None, 30)
     text_coord = 50
-    for line in intro_text:
+    for line in lb_text:
         string_rendered = font.render(line, 1, pygame.Color('white'))
         intro_rect = string_rendered.get_rect()
         text_coord += 10
@@ -61,9 +104,9 @@ def start_screen():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
-                return  # начинаем игру
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                return
+
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -82,7 +125,7 @@ def load_level(filename):
 
 
 tile_images = {
-    'wall': load_image('стена2.png'),
+    'wall': load_image('wall.png'),
     'empty': load_image('grass.png')
 }
 player_image = load_image('mar.png')
@@ -144,8 +187,10 @@ def move(hero, movement):
 
 
 running = True
-start_screen()
-level_map = load_level('lvl3.txt')
+con = sqlite3.connect('data/game_stat.db')
+cur = con.cursor()
+level = start_screen()
+level_map = load_level(level)
 hero, max_X, max_y = generate_level(level_map)
 while running:
     for event in pygame.event.get():
