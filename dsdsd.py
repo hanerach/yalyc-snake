@@ -1,10 +1,11 @@
 import os
+import random
 import sqlite3
 import sys
-
 import pygame
 
 all_sprites = pygame.sprite.Group()
+food_group = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 
@@ -46,7 +47,7 @@ def name_input_screen():
                   '',
                   "Продолжить"]
 
-    fon = pygame.transform.scale(load_image('main_menu_background.jpg'), (WIDTH, HEIGHT))
+    fon = pygame.transform.scale(load_image('backgrounds/main_menu_background.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
     font = pygame.font.Font(None, 30)
     text_coord = 150
@@ -100,7 +101,7 @@ def level_select_screen(user_name: str):
                   "",
                   "Таблица лидеров"]
 
-    fon = pygame.transform.scale(load_image('main_menu_background.jpg'), (WIDTH, HEIGHT))
+    fon = pygame.transform.scale(load_image('backgrounds/main_menu_background.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
     font = pygame.font.Font(None, 30)
     text_coord = 150
@@ -124,11 +125,11 @@ def level_select_screen(user_name: str):
                 for i in BUTTONS:
                     if i[0] <= coords[0] <= i[0] + i[2] and i[1] <= coords[1] <= i[1] + i[3]:
                         if i[4] == intro_text[3]:
-                            return 'lvl_easy.txt'
+                            return 'levels/lvl_easy.txt'
                         elif i[4] == intro_text[4]:
-                            return 'lvl_medium.txt'
+                            return 'levels/lvl_medium.txt'
                         elif i[4] == intro_text[5]:
-                            return 'lvl_hard.txt'
+                            return 'levels/lvl_hard.txt'
                         elif i[4] == intro_text[7]:
                             return "lb"
 
@@ -142,10 +143,11 @@ def leaderboard():
     for j in data:
         temp = f'{j[0].ljust(25, " ")}{str(j[1]).ljust(26, " ")}{j[2]}'
         lb_text.append(temp)
-    fon = pygame.transform.scale(load_image('leaderboard_background.jpg'), (WIDTH, HEIGHT))
+    fon = pygame.transform.scale(load_image('backgrounds/leaderboard_background.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
     font = pygame.font.Font('data/CoreSans.ttf', 25)
-    screen.blit(font.render("Нажмите в любом месте для выхода", 1, pygame.Color('white')), (120, 550))
+    screen.blit(font.render("Нажмите в любом месте для выхода",
+                            1, pygame.Color('white')), (120, 550))
     text_coord = 50
     for line in lb_text:
         string_rendered = font.render(line, 1, pygame.Color('white'))
@@ -181,12 +183,63 @@ def load_level(filename):
 
 
 tile_images = {
-    'wall': load_image('wall.png'),
-    'empty': load_image('grass.png')
+    'wall': load_image('textures/wall.png'),
+    'empty': load_image('textures/grass.png')
 }
-player_image = load_image('mar.png')
+player_image = load_image('textures/duck.png')
 
 tile_width = tile_height = 50
+
+food_image = load_image('textures/apple.png')
+
+
+screen_rect = (0, 0, WIDTH, HEIGHT)
+GRAVITY = 10
+
+
+class Particle(pygame.sprite.Sprite):
+    # сгенерируем частицы разного размера
+    fire = [load_image("textures/star.png")]
+    for scale in (5, 10, 20):
+        fire.append(pygame.transform.scale(fire[0], (scale, scale)))
+
+    def __init__(self, pos, dx, dy):
+        super().__init__(all_sprites)
+        self.image = random.choice(self.fire)
+        self.rect = self.image.get_rect()
+
+        # у каждой частицы своя скорость — это вектор
+        self.velocity = [dx, dy]
+        # и свои координаты
+        self.rect.x, self.rect.y = pos
+
+        # гравитация будет одинаковой (значение константы)
+        self.gravity = GRAVITY
+
+    def update(self):
+        # применяем гравитационный эффект:
+        # движение с ускорением под действием гравитации
+        self.velocity[1] += self.gravity
+        # перемещаем частицу
+        self.rect.x += self.velocity[0]
+        self.rect.y += self.velocity[1]
+        # убиваем, если частица ушла за экран
+        if not self.rect.colliderect(screen_rect):
+            self.kill()
+
+
+class Food(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(all_sprites, food_group)
+        self.image = food_image
+        self.rect = self.image.get_rect().move(
+            tile_width * pos_x + 5, tile_height * pos_y + 5)
+        self.pos = (pos_x, pos_y)
+
+    def spawn(self, y, x):
+        self.pos = (x, y)
+        self.rect = self.rect = self.image.get_rect().move(tile_width * self.pos[0] + 5,
+                                               tile_width * self.pos[1] + 5)
 
 
 class Tile(pygame.sprite.Sprite):
@@ -202,16 +255,38 @@ class Player(pygame.sprite.Sprite):
         super().__init__(player_group, all_sprites)
         self.image = player_image
         self.rect = self.image.get_rect().move(
-            tile_width * pos_x + 15, tile_height * pos_y + 5)
+            tile_width * pos_x + 8, tile_height * pos_y + 7)
         self.pos = (pos_x, pos_y)
 
     def move(self, x, y):
         self.pos = x, y
-        self.rect = self.image.get_rect().move(tile_width * self.pos[0] + 15,
-                                               tile_width * self.pos[1] + 5)
+        self.rect = self.image.get_rect().move(tile_width * self.pos[0] + 8,
+                                               tile_width * self.pos[1] + 7)
+        if pygame.sprite.spritecollideany(self, food_group):
+            generate_food(level_map)
+            create_particles((x, y))
 
 
 player = None
+food = Food(5, 7)
+
+
+def create_particles(position):
+    # количество создаваемых частиц
+    particle_count = 20
+    # возможные скорости
+    numbers = range(-5, 6)
+    for _ in range(particle_count):
+        Particle(position, random.choice(numbers), random.choice(numbers))
+    all_sprites.update()
+
+
+
+def generate_food(level):
+    x, y = random.randint(1, 10), random.randint(0, 10)
+    while level[y][x] != '.':
+        x, y = random.randint(1, 10), random.randint(0, 10)
+    food.spawn(y, x)
 
 
 def generate_level(level):
@@ -227,19 +302,38 @@ def generate_level(level):
                 new_player = Player(x, y)
                 level[y] = level[y][:x] + '.' + level[y][x + 1:]
     # вернем игрока, а также размер поля в клетках
+    generate_food(level)
     return new_player, x, y
 
 
 def move(hero, movement):
     x, y = hero.pos
-    if movement == 'up' and y > 0 and level_map[y - 1][x] == '.':
-        hero.move(x, y - 1)
-    if movement == 'down' and y > 0 and level_map[y + 1][x] == '.':
-        hero.move(x, y + 1)
-    if movement == 'left' and x > 0 and level_map[y][x - 1] == '.':
-        hero.move(x - 1, y)
-    if movement == 'right' and y > 0 and level_map[y][x + 1] == '.':
-        hero.move(x + 1, y)
+    if movement == 'up':
+        if y > 0 and level_map[y - 1][x] == '.':
+            hero.move(x, y - 1)
+        else:
+            return False
+    if movement == 'down':
+        if y > 0 and level_map[y + 1][x] == '.':
+            hero.move(x, y + 1)
+        else:
+            return False
+    if movement == 'left':
+        if x > 0 and level_map[y][x - 1] == '.':
+            hero.move(x - 1, y)
+        else:
+            return False
+    if movement == 'right':
+        if y > 0 and level_map[y][x + 1] == '.':
+            hero.move(x + 1, y)
+        else:
+            return False
+
+
+def game_over():
+    font = pygame.font.Font(None, 30)
+    screen.blit(font.render("Вы проиграли. Нажмите в любом месте для выхода",
+                            1, pygame.Color('red')), (10, 100))
 
 
 running = True
@@ -251,22 +345,32 @@ while level_select_screen(user_name) == 'lb':
 level = level_select_screen(user_name)
 level_map = load_level(level)
 hero, max_X, max_y = generate_level(level_map)
+err = None
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP:
-                move(hero, 'up')
-            if event.key == pygame.K_DOWN:
-                move(hero, 'down')
-            if event.key == pygame.K_LEFT:
-                move(hero, 'left')
-            if event.key == pygame.K_RIGHT:
-                move(hero, 'right')
+        elif event.type == pygame.KEYDOWN and err is None:
+            if event.key == pygame.K_UP or event.key == pygame.K_w:
+                err = move(hero, 'up')
+            if event.key == pygame.K_DOWN or event.key == pygame.K_s:
+                err = move(hero, 'down')
+            if event.key == pygame.K_LEFT or event.key == pygame.K_a:
+                err = move(hero, 'left')
+            if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
+                err = move(hero, 'right')
+
+            if event.key == pygame.K_q:
+                running = False
+
+        else:
+            game_over()
+
+
     screen.fill(pygame.Color('Black'))
     tiles_group.draw(screen)
     player_group.draw(screen)
+    food_group.draw(screen)
     clock.tick(FPS)
     pygame.display.flip()
 pygame.quit()
