@@ -38,9 +38,61 @@ def terminate():
     sys.exit()
 
 
-def start_screen():
+def name_input_screen():
     intro_text = ["Добро пожаловать в Змейку",
                   "",
+                  "Введите имя:",
+                  "",
+                  '',
+                  "Продолжить"]
+
+    fon = pygame.transform.scale(load_image('main_menu_background.jpg'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))
+    font = pygame.font.Font(None, 30)
+    text_coord = 150
+    BUTTONS = []
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color('white'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 150
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+        BUTTONS.append([*intro_rect, line])
+    user_text = ''
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                coords = event.pos
+                for i in BUTTONS:
+                    if i[0] <= coords[0] <= i[0] + i[2] and i[1] <= coords[1] <= i[1] + i[3]:
+                        if i[4] == intro_text[-1]:
+                            return user_text
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_BACKSPACE:
+                    user_text = user_text[:-1]
+                else:
+                    user_text += event.unicode
+
+        pygame.draw.rect(screen, 'orange', (150, 260, 200, 25))
+        text_surface = font.render(user_text, True, "black")
+
+        # рендеринг согласно вводу мени пользователя
+        screen.blit(text_surface, (155, 265, 200, 25))
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def level_select_screen(user_name: str):
+    intro_text = ["Добро пожаловать в Змейку,",
+                  f"{user_name}",
                   "Выбор уровня:",
                   "  Пустое поле",
                   "  Поле с границами",
@@ -78,25 +130,29 @@ def start_screen():
                         elif i[4] == intro_text[5]:
                             return 'lvl_hard.txt'
                         elif i[4] == intro_text[7]:
-                            leaderboard()
+                            return "lb"
 
         pygame.display.flip()
         clock.tick(FPS)
 
 
 def leaderboard():
-    lb_text = cur.execute("""SELECT * FROM statistic""").fetchall()
-
+    data = cur.execute("""SELECT name, count, diff FROM statistic""").fetchall()
+    lb_text = ["Имя             Количество             Сложность"]
+    for j in data:
+        temp = f'{j[0].ljust(25, " ")}{str(j[1]).ljust(26, " ")}{j[2]}'
+        lb_text.append(temp)
     fon = pygame.transform.scale(load_image('leaderboard_background.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
-    font = pygame.font.Font(None, 30)
+    font = pygame.font.Font('data/CoreSans.ttf', 25)
+    screen.blit(font.render("Нажмите в любом месте для выхода", 1, pygame.Color('white')), (120, 550))
     text_coord = 50
     for line in lb_text:
         string_rendered = font.render(line, 1, pygame.Color('white'))
         intro_rect = string_rendered.get_rect()
         text_coord += 10
         intro_rect.top = text_coord
-        intro_rect.x = 10
+        intro_rect.x = 100
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
 
@@ -189,7 +245,10 @@ def move(hero, movement):
 running = True
 con = sqlite3.connect('data/game_stat.db')
 cur = con.cursor()
-level = start_screen()
+user_name = name_input_screen()
+while level_select_screen(user_name) == 'lb':
+    leaderboard()
+level = level_select_screen(user_name)
 level_map = load_level(level)
 hero, max_X, max_y = generate_level(level_map)
 while running:
