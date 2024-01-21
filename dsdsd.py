@@ -263,10 +263,11 @@ class Player(pygame.sprite.Sprite):
         self.pos = x, y
         self.rect = self.image.get_rect().move(tile_width * self.pos[0] + 8,
                                                tile_width * self.pos[1] + 7)
+
         if pygame.sprite.spritecollideany(self, food_group):
             generate_food(level_map)
             create_particles((x, y))
-            increase(x, y)
+            # increase(x, y)
             self.points += 1
             score(self.points)
 
@@ -284,6 +285,10 @@ def score(points):
 def increase(x, y):
     sprite = Player(x, y)
     snake_list.append(sprite)
+    while len(snake_list) > length_of_snake:
+        snake_list.pop()
+        player_group.remove(sprite)
+
 
 
 def create_particles(position: tuple):
@@ -315,7 +320,7 @@ def generate_level(level):
                 Tile('empty', x, y)
                 new_player = Player(x, y)
                 level[y] = level[y][:x] + '.' + level[y][x + 1:]
-    # вернем игрока, а также размер поля в клетках
+    # вернем игрока, а также размер поля в клетках и сгенирируем яблоко
     generate_food(level)
     return new_player, x, y
 
@@ -350,39 +355,49 @@ def game_over():
                             1, pygame.Color('red')), (10, 100, 100, 100))
 
 
-running = True
 con = sqlite3.connect('data/game_stat.db')
 cur = con.cursor()
+# начальные экраны и таблица лидеров
 user_name = name_input_screen()
 while level_select_screen(user_name) == 'lb':
     leaderboard()
 level = level_select_screen(user_name)
 level_map = load_level(level)
 hero, max_X, max_y = generate_level(level_map)
+# переменные для персонажа
 snake_list = [hero]
-length_of_snake = 1
+length_of_snake = 3
 err = None
 dest = 'down'
+
+running = True
+
 while running:
     for event in pygame.event.get():
+
         if event.type == pygame.QUIT:
             running = False
+
         elif event.type == pygame.KEYDOWN:
+            # смена направления движения
             if event.key == pygame.K_UP or event.key == pygame.K_w:
                 if dest != 'down':
                     dest = 'up'
                 else:
                     err = False
+
             if event.key == pygame.K_DOWN or event.key == pygame.K_s:
                 if dest != 'up':
                     dest = 'down'
                 else:
                     err = False
+
             if event.key == pygame.K_LEFT or event.key == pygame.K_a:
                 if dest != 'right':
                     dest = 'left'
                 else:
                     err = False
+
             if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                 if dest != 'left':
                     dest = 'right'
@@ -391,13 +406,14 @@ while running:
 
             if event.key == pygame.K_q:
                 running = False
+    # err - если False, то проигрыш
     if err is not False:
-        for i in snake_list:
-            err = move(i, dest)
+        increase(*hero.pos)
+        err = move(hero, dest)
+        # for i in snake_list:
+        #     err = move(i, dest)
     else:
         game_over()
-
-
 
 
     screen.fill(pygame.Color('Black'))

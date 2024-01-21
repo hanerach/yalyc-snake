@@ -34,10 +34,12 @@ length_of_snake = 1
 food_x = round(random.randrange(0, width - 10) / 10.0) * 10.0
 food_y = round(random.randrange(0, height - 10) / 10.0) * 10.0
 
+
 # Функция отображения змейки
 def show_snake(snake_list):
     for x in snake_list:
         pygame.draw.rect(window, black, [x[0], x[1], 10, 10])
+
 
 # Главный игровой цикл
 game_over = False
