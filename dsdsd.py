@@ -10,7 +10,7 @@ tiles_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 
 
-def load_image(name, colorkey=None):
+def load_image(name: str, colorkey=None):
     fullname = os.path.join('data', name)
     # если файл не существует, то выходим
     if not os.path.isfile(fullname):
@@ -30,7 +30,7 @@ def load_image(name, colorkey=None):
 pygame.init()
 screen_size = WIDTH, HEIGHT = (600, 600)
 screen = pygame.display.set_mode(screen_size)
-FPS = 50
+FPS = 6
 clock = pygame.time.Clock()
 
 
@@ -169,7 +169,7 @@ def leaderboard():
         clock.tick(FPS)
 
 
-def load_level(filename):
+def load_level(filename: str):
     filename = "data/" + filename
     # читаем уровень, убирая символы перевода строки
     with open(filename, 'r') as mapFile:
@@ -184,7 +184,7 @@ def load_level(filename):
 
 tile_images = {
     'wall': load_image('textures/wall.png'),
-    'empty': load_image('textures/grass.png')
+    'empty': load_image('textures/water.png')
 }
 player_image = load_image('textures/duck.png')
 
@@ -236,7 +236,7 @@ class Food(pygame.sprite.Sprite):
             tile_width * pos_x + 5, tile_height * pos_y + 5)
         self.pos = (pos_x, pos_y)
 
-    def spawn(self, y, x):
+    def spawn(self, y: int, x: int):
         self.pos = (x, y)
         self.rect = self.rect = self.image.get_rect().move(tile_width * self.pos[0] + 5,
                                                tile_width * self.pos[1] + 5)
@@ -257,6 +257,7 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             tile_width * pos_x + 8, tile_height * pos_y + 7)
         self.pos = (pos_x, pos_y)
+        self.points = 0
 
     def move(self, x, y):
         self.pos = x, y
@@ -265,13 +266,27 @@ class Player(pygame.sprite.Sprite):
         if pygame.sprite.spritecollideany(self, food_group):
             generate_food(level_map)
             create_particles((x, y))
+            increase(x, y)
+            self.points += 1
+            score(self.points)
 
 
 player = None
 food = Food(5, 7)
 
 
-def create_particles(position):
+def score(points):
+    font = pygame.font.Font(None, 30)
+    screen.blit(font.render(f"Ваш счёт:{points}",
+                            1, pygame.Color('red')), (10, 100, 100, 100))
+
+
+def increase(x, y):
+    sprite = Player(x, y)
+    snake_list.append(sprite)
+
+
+def create_particles(position: tuple):
     # количество создаваемых частиц
     particle_count = 20
     # возможные скорости
@@ -279,7 +294,6 @@ def create_particles(position):
     for _ in range(particle_count):
         Particle(position, random.choice(numbers), random.choice(numbers))
     all_sprites.update()
-
 
 
 def generate_food(level):
@@ -306,7 +320,7 @@ def generate_level(level):
     return new_player, x, y
 
 
-def move(hero, movement):
+def move(hero, movement: str):
     x, y = hero.pos
     if movement == 'up':
         if y > 0 and level_map[y - 1][x] == '.':
@@ -333,7 +347,7 @@ def move(hero, movement):
 def game_over():
     font = pygame.font.Font(None, 30)
     screen.blit(font.render("Вы проиграли. Нажмите в любом месте для выхода",
-                            1, pygame.Color('red')), (10, 100))
+                            1, pygame.Color('red')), (10, 100, 100, 100))
 
 
 running = True
@@ -345,26 +359,45 @@ while level_select_screen(user_name) == 'lb':
 level = level_select_screen(user_name)
 level_map = load_level(level)
 hero, max_X, max_y = generate_level(level_map)
+snake_list = [hero]
+length_of_snake = 1
 err = None
+dest = 'down'
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        elif event.type == pygame.KEYDOWN and err is None:
+        elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_UP or event.key == pygame.K_w:
-                err = move(hero, 'up')
+                if dest != 'down':
+                    dest = 'up'
+                else:
+                    err = False
             if event.key == pygame.K_DOWN or event.key == pygame.K_s:
-                err = move(hero, 'down')
+                if dest != 'up':
+                    dest = 'down'
+                else:
+                    err = False
             if event.key == pygame.K_LEFT or event.key == pygame.K_a:
-                err = move(hero, 'left')
+                if dest != 'right':
+                    dest = 'left'
+                else:
+                    err = False
             if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
-                err = move(hero, 'right')
+                if dest != 'left':
+                    dest = 'right'
+                else:
+                    err = False
 
             if event.key == pygame.K_q:
                 running = False
+    if err is not False:
+        for i in snake_list:
+            err = move(i, dest)
+    else:
+        game_over()
 
-        else:
-            game_over()
+
 
 
     screen.fill(pygame.Color('Black'))
