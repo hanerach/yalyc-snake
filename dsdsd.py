@@ -4,6 +4,7 @@ import sqlite3
 import sys
 import pygame
 
+particle_group = pygame.sprite.Group()
 all_sprites = pygame.sprite.Group()
 food_group = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
@@ -196,7 +197,7 @@ tile_width = tile_height = 50
 food_image = load_image('textures/apple.png')
 
 screen_rect = (0, 0, WIDTH, HEIGHT)
-GRAVITY = 1
+GRAVITY = 10
 
 
 class Particle(pygame.sprite.Sprite):
@@ -206,7 +207,7 @@ class Particle(pygame.sprite.Sprite):
         fire.append(pygame.transform.scale(fire[0], (scale, scale)))
 
     def __init__(self, pos, dx, dy):
-        super().__init__(all_sprites)
+        super().__init__(particle_group)
         self.image = random.choice(self.fire)
         self.rect = self.image.get_rect()
 
@@ -270,12 +271,12 @@ class Player(pygame.sprite.Sprite):
                                                tile_width * self.pos[1] + 7)
 
         if pygame.sprite.spritecollideany(self, food_group):
-            create_particles((x, y))
             self.points += 1
             score(self.points)
             tail = Tail(*self.tail_coords[-1])
             self.tail_list.append(tail)
             generate_food(level_map, self.tail_coords)
+            return self.pos
         else:
             self.tail_coords.pop()
 
@@ -307,16 +308,6 @@ def score(points):
     font = pygame.font.Font(None, 30)
     screen.blit(font.render(f"Ваш счёт:{points}",
                             1, pygame.Color('red')), (10, 100, 100, 100))
-
-
-def create_particles(position: tuple):
-    # количество создаваемых частиц
-    particle_count = 20
-    # возможные скорости
-    numbers = range(-5, 6)
-    for _ in range(particle_count):
-        Particle(position, random.choice(numbers), random.choice(numbers))
-    all_sprites.update()
 
 
 def generate_food(level, tail_coords):
@@ -367,12 +358,6 @@ def move(hero, movement: str):
             return True
 
 
-def game_over():
-    font = pygame.font.Font(None, 30)
-    screen.blit(font.render("Вы проиграли. Нажмите в любом месте для выхода",
-                            1, pygame.Color('red')), (10, 100, 100, 100))
-
-
 con = sqlite3.connect('data/game_stat.db')
 cur = con.cursor()
 # начальные экраны и таблица лидеров
@@ -417,14 +402,30 @@ while running:
     # lose - если True, то проигрыш
     if lose is not True:
         lose = move(hero, dest)
-    else:
-        game_over()
+
+    if type(lose) == tuple:
+        particle_count = 20
+        # возможные скорости
+        numbers = range(-5, 6)
+        for _ in range(particle_count):
+            Particle(lose, random.choice(numbers), random.choice(numbers))
 
     screen.fill(pygame.Color('Black'))
+    particle_group.update()
+    particle_group.draw(screen)
     tiles_group.draw(screen)
     tail_group.draw(screen)
     head_group.draw(screen)
     food_group.draw(screen)
+
+
+    if lose is True:
+        screen.fill('black')
+        font = pygame.font.Font(None, 30)
+        screen.blit(font.render("Вы проиграли. Нажмите в любом месте для выхода",
+                                1, pygame.Color('red')), (10, 100, 100, 100))
+
+
     clock.tick(FPS)
     pygame.display.flip()
 pygame.quit()
