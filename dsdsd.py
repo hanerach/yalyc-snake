@@ -7,7 +7,8 @@ import pygame
 all_sprites = pygame.sprite.Group()
 food_group = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
-player_group = pygame.sprite.Group()
+head_group = pygame.sprite.Group()
+tail_group = pygame.sprite.Group()
 
 
 def load_image(name: str, colorkey=None):
@@ -192,9 +193,8 @@ tile_width = tile_height = 50
 
 food_image = load_image('textures/apple.png')
 
-
 screen_rect = (0, 0, WIDTH, HEIGHT)
-GRAVITY = 10
+GRAVITY = 1
 
 
 class Particle(pygame.sprite.Sprite):
@@ -239,7 +239,7 @@ class Food(pygame.sprite.Sprite):
     def spawn(self, y: int, x: int):
         self.pos = (x, y)
         self.rect = self.rect = self.image.get_rect().move(tile_width * self.pos[0] + 5,
-                                               tile_width * self.pos[1] + 5)
+                                                           tile_width * self.pos[1] + 5)
 
 
 class Tile(pygame.sprite.Sprite):
@@ -252,14 +252,17 @@ class Tile(pygame.sprite.Sprite):
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
-        super().__init__(player_group, all_sprites)
+        super().__init__(head_group, all_sprites)
         self.image = player_image
         self.rect = self.image.get_rect().move(
             tile_width * pos_x + 8, tile_height * pos_y + 7)
         self.pos = (pos_x, pos_y)
         self.points = 0
+        self.tail_coords = []
+        self.tail_list = []
 
     def move(self, x, y):
+        self.tail_coords.insert(0, self.pos)
         self.pos = x, y
         self.rect = self.image.get_rect().move(tile_width * self.pos[0] + 8,
                                                tile_width * self.pos[1] + 7)
@@ -267,12 +270,34 @@ class Player(pygame.sprite.Sprite):
         if pygame.sprite.spritecollideany(self, food_group):
             generate_food(level_map)
             create_particles((x, y))
-            # increase(x, y)
             self.points += 1
             score(self.points)
+            tail = Tail(*self.tail_coords[-1])
+            self.tail_list.append(tail)
+        else:
+            self.tail_coords.pop()
+
+        for i in range(len(self.tail_list)):
+            self.tail_list[i].move(self.tail_coords[i])
+
+        if pygame.sprite.spritecollideany(self, tail_group):
+            return True
 
 
-player = None
+class Tail(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(tail_group, all_sprites)
+        self.image = player_image
+        self.rect = self.rect = self.image.get_rect().move(
+            tile_width * pos_x + 8, tile_height * pos_y + 7)
+        self.pos = (pos_x, pos_y)
+
+    def move(self, pos):
+        self.pos = pos
+        self.rect = self.image.get_rect().move(tile_width * self.pos[0] + 8,
+                                               tile_width * self.pos[1] + 7)
+
+
 food = Food(5, 7)
 
 
@@ -280,15 +305,6 @@ def score(points):
     font = pygame.font.Font(None, 30)
     screen.blit(font.render(f"Ваш счёт:{points}",
                             1, pygame.Color('red')), (10, 100, 100, 100))
-
-
-def increase(x, y):
-    sprite = Player(x, y)
-    snake_list.append(sprite)
-    while len(snake_list) > length_of_snake:
-        snake_list.pop()
-        player_group.remove(sprite)
-
 
 
 def create_particles(position: tuple):
@@ -329,24 +345,24 @@ def move(hero, movement: str):
     x, y = hero.pos
     if movement == 'up':
         if y > 0 and level_map[y - 1][x] == '.':
-            hero.move(x, y - 1)
+            return hero.move(x, y - 1)
         else:
-            return False
+            return True
     if movement == 'down':
         if y > 0 and level_map[y + 1][x] == '.':
-            hero.move(x, y + 1)
+            return hero.move(x, y + 1)
         else:
-            return False
+            return True
     if movement == 'left':
         if x > 0 and level_map[y][x - 1] == '.':
-            hero.move(x - 1, y)
+            return hero.move(x - 1, y)
         else:
-            return False
+            return True
     if movement == 'right':
         if y > 0 and level_map[y][x + 1] == '.':
-            hero.move(x + 1, y)
+            return hero.move(x + 1, y)
         else:
-            return False
+            return True
 
 
 def game_over():
@@ -365,9 +381,7 @@ level = level_select_screen(user_name)
 level_map = load_level(level)
 hero, max_X, max_y = generate_level(level_map)
 # переменные для персонажа
-snake_list = [hero]
-length_of_snake = 3
-err = None
+lose = None
 dest = 'down'
 
 running = True
@@ -383,42 +397,31 @@ while running:
             if event.key == pygame.K_UP or event.key == pygame.K_w:
                 if dest != 'down':
                     dest = 'up'
-                else:
-                    err = False
 
             if event.key == pygame.K_DOWN or event.key == pygame.K_s:
                 if dest != 'up':
                     dest = 'down'
-                else:
-                    err = False
 
             if event.key == pygame.K_LEFT or event.key == pygame.K_a:
                 if dest != 'right':
                     dest = 'left'
-                else:
-                    err = False
 
             if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                 if dest != 'left':
                     dest = 'right'
-                else:
-                    err = False
 
             if event.key == pygame.K_q:
                 running = False
-    # err - если False, то проигрыш
-    if err is not False:
-        increase(*hero.pos)
-        err = move(hero, dest)
-        # for i in snake_list:
-        #     err = move(i, dest)
+    # lose - если True, то проигрыш
+    if lose is not True:
+        lose = move(hero, dest)
     else:
         game_over()
 
-
     screen.fill(pygame.Color('Black'))
     tiles_group.draw(screen)
-    player_group.draw(screen)
+    tail_group.draw(screen)
+    head_group.draw(screen)
     food_group.draw(screen)
     clock.tick(FPS)
     pygame.display.flip()
