@@ -187,7 +187,9 @@ tile_images = {
     'wall': load_image('textures/wall.png'),
     'empty': load_image('textures/water.png')
 }
-player_image = load_image('textures/duck.png')
+head_image = load_image('textures/head.png')
+tail_image = load_image('textures/tail.png')
+
 
 tile_width = tile_height = 50
 
@@ -253,7 +255,7 @@ class Tile(pygame.sprite.Sprite):
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(head_group, all_sprites)
-        self.image = player_image
+        self.image = head_image
         self.rect = self.image.get_rect().move(
             tile_width * pos_x + 8, tile_height * pos_y + 7)
         self.pos = (pos_x, pos_y)
@@ -287,7 +289,7 @@ class Player(pygame.sprite.Sprite):
 class Tail(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(tail_group, all_sprites)
-        self.image = player_image
+        self.image = tail_image
         self.rect = self.rect = self.image.get_rect().move(
             tile_width * pos_x + 8, tile_height * pos_y + 7)
         self.pos = (pos_x, pos_y)
