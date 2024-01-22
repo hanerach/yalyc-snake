@@ -2,6 +2,8 @@ import os
 import random
 import sqlite3
 import sys
+import time
+
 import pygame
 
 particle_group = pygame.sprite.Group()
@@ -32,7 +34,7 @@ def load_image(name: str, colorkey=None):
 pygame.init()
 screen_size = WIDTH, HEIGHT = (600, 600)
 screen = pygame.display.set_mode(screen_size)
-FPS = 6
+FPS = 30
 clock = pygame.time.Clock()
 
 
@@ -197,7 +199,7 @@ tile_width = tile_height = 50
 food_image = load_image('textures/apple.png')
 
 screen_rect = (0, 0, WIDTH, HEIGHT)
-GRAVITY = 20
+GRAVITY = 10
 
 
 class Particle(pygame.sprite.Sprite):
@@ -208,15 +210,13 @@ class Particle(pygame.sprite.Sprite):
 
     def __init__(self, pos, dx, dy):
         super().__init__(particle_group)
-        pos_x, pos_y = pos
         self.image = random.choice(self.fire)
-        self.rect = self.rect = self.image.get_rect().move(
-            tile_width * pos_x + 8, tile_height * pos_y + 7)
-        self.pos = (pos_x, pos_y)
+        self.rect = self.image.get_rect()
+
         # у каждой частицы своя скорость — это вектор
         self.velocity = [dx, dy]
         # и свои координаты
-        self.rect_x, self.rect_y = pos
+        self.rect.x, self.rect.y = pos
 
         # гравитация будет одинаковой (значение константы)
         self.gravity = GRAVITY
@@ -262,6 +262,7 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             tile_width * pos_x + 8, tile_height * pos_y + 7)
         self.pos = (pos_x, pos_y)
+        self.points = 0
         self.tail_coords = []
         self.tail_list = []
 
@@ -272,6 +273,8 @@ class Player(pygame.sprite.Sprite):
                                                tile_width * self.pos[1] + 7)
 
         if pygame.sprite.spritecollideany(self, food_group):
+            self.points += 1
+            score(self.points)
             tail = Tail(*self.tail_coords[-1])
             self.tail_list.append(tail)
             generate_food(level_map, self.tail_coords)
@@ -301,6 +304,12 @@ class Tail(pygame.sprite.Sprite):
 
 
 food = Food(5, 7)
+
+
+def score(points):
+    font = pygame.font.Font(None, 30)
+    screen.blit(font.render(f"Ваш счёт:{points}",
+                            1, pygame.Color('red')), (10, 100, 100, 100))
 
 
 def generate_food(level, tail_coords):
@@ -349,7 +358,7 @@ def move(hero, movement: str):
             return hero.move(x + 1, y)
         else:
             return True
-
+    time.sleep(0.3)
 
 con = sqlite3.connect('data/game_stat.db')
 cur = con.cursor()
@@ -367,7 +376,6 @@ dest = 'down'
 running = True
 
 while running:
-    points = len(tail_group)
     for event in pygame.event.get():
 
         if event.type == pygame.QUIT:
@@ -393,16 +401,17 @@ while running:
 
             if event.key == pygame.K_q:
                 running = False
+
     # lose - если True, то проигрыш
     if lose is not True:
         lose = move(hero, dest)
 
     if type(lose) == tuple:
-        particle_count = 5
+        particle_count = 20
         # возможные скорости
         numbers = range(-5, 6)
         for _ in range(particle_count):
-            Particle(hero.pos, random.choice(numbers), random.choice(numbers))
+            Particle(lose, random.choice(numbers), random.choice(numbers))
 
     screen.fill(pygame.Color('Black'))
     particle_group.update()
@@ -413,15 +422,12 @@ while running:
     particle_group.draw(screen)
 
 
+
     if lose is True:
         screen.fill('black')
         font = pygame.font.Font(None, 30)
         screen.blit(font.render("Вы проиграли. Нажмите в любом месте для выхода",
                                 1, pygame.Color('red')), (10, 100, 100, 100))
-    else:
-        font = pygame.font.Font(None, 30)
-        screen.blit(font.render(f"Ваш счёт:{points}",
-                                1, pygame.Color('green')), (250, 20, 100, 100))
 
 
     clock.tick(FPS)
