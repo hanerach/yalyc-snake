@@ -270,12 +270,12 @@ class Player(pygame.sprite.Sprite):
                                                tile_width * self.pos[1] + 7)
 
         if pygame.sprite.spritecollideany(self, food_group):
-            generate_food(level_map)
             create_particles((x, y))
             self.points += 1
             score(self.points)
             tail = Tail(*self.tail_coords[-1])
             self.tail_list.append(tail)
+            generate_food(level_map, self.tail_coords)
         else:
             self.tail_coords.pop()
 
@@ -319,9 +319,9 @@ def create_particles(position: tuple):
     all_sprites.update()
 
 
-def generate_food(level):
+def generate_food(level, tail_coords):
     x, y = random.randint(1, 10), random.randint(0, 10)
-    while level[y][x] != '.':
+    while level[y][x] != '.' or (x, y) in tail_coords:
         x, y = random.randint(1, 10), random.randint(0, 10)
     food.spawn(y, x)
 
@@ -339,7 +339,7 @@ def generate_level(level):
                 new_player = Player(x, y)
                 level[y] = level[y][:x] + '.' + level[y][x + 1:]
     # вернем игрока, а также размер поля в клетках и сгенирируем яблоко
-    generate_food(level)
+    generate_food(level, [(0, 0)])
     return new_player, x, y
 
 
