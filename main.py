@@ -12,6 +12,7 @@ tiles_group = pygame.sprite.Group()
 head_group = pygame.sprite.Group()
 tail_group = pygame.sprite.Group()
 
+
 # функция загрузки изображения
 def load_image(name: str, colorkey=None):
     fullname = os.path.join('data', name)
@@ -29,13 +30,14 @@ def load_image(name: str, colorkey=None):
         image = image.convert_alpha()
     return image
 
+
 # инициализация окна pygame
 pygame.init()
 # размеры экрана
 screen_size = WIDTH, HEIGHT = (600, 600)
 screen = pygame.display.set_mode(screen_size)
 # ограничение скорости обновления экрана
-FPS = 6
+FPS = 5
 clock = pygame.time.Clock()
 
 
@@ -208,6 +210,7 @@ def load_level(filename: str):
     # дополняем каждую строку пустыми клетками ('.')
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
+
 # инициализация текстур для спрайтов и окружения
 tile_images = {
     'wall': load_image('textures/wall.png'),
@@ -279,6 +282,7 @@ class Food(pygame.sprite.Sprite):
         self.rect = self.rect = self.image.get_rect().move(tile_width * self.pos[0] + 5,
                                                            tile_width * self.pos[1] + 5)
 
+
 # класс клетки
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type: str, pos_x: int, pos_y: int):
@@ -306,13 +310,17 @@ class Head(pygame.sprite.Sprite):
         # список для хранения экземпляров хвоста
         self.tail_list = []
 
-    def move(self, x: int, y: int):
+    def move(self, x: int, y: int, dest: str, shift: int):
         # добавляем координаты до передвежения
         self.tail_coords.insert(0, self.pos)
         # меняем координаты на новые, то бишь двигаемся
         self.pos = x, y
-        self.rect = self.image.get_rect().move(tile_width * self.pos[0] + 8,
-                                               tile_width * self.pos[1] + 7)
+        if dest == 'up' or dest == 'down':
+            self.rect = self.image.get_rect().move((tile_width * self.pos[0] - shift) + 8,
+                                                   tile_width * self.pos[1] + 7)
+        else:
+            self.rect = self.image.get_rect().move(tile_width * self.pos[0] + 8,
+                                                   (tile_width * self.pos[1] - shift) + 7)
         # если просходит коллизия с яблоком
         if pygame.sprite.spritecollideany(self, food_group):
             # создаём экземпляр хвоста
@@ -388,27 +396,27 @@ def generate_level(level):
 
 
 # функция передвежения головы
-def move(hero, movement: str):
+def is_wall(hero, movement: str):
     x, y = hero.pos
     # понимаем в какую сторону повернулась змея, и вызываем метод головы для изменения координат
     if movement == 'up':
         if y > 0 and level_map[y - 1][x] == '.':
-            return hero.move(x, y - 1)
+            return [y - 1, x]
         else:
             return True
     if movement == 'down':
         if y > 0 and level_map[y + 1][x] == '.':
-            return hero.move(x, y + 1)
+            return [y + 1, x]
         else:
             return True
     if movement == 'left':
         if x > 0 and level_map[y][x - 1] == '.':
-            return hero.move(x - 1, y)
+            return [y, x - 1]
         else:
             return True
     if movement == 'right':
         if y > 0 and level_map[y][x + 1] == '.':
-            return hero.move(x + 1, y)
+            return [y, x + 1]
         else:
             return True
 
@@ -475,8 +483,10 @@ while running:
             if event.key == pygame.K_q:
                 running = False
     # lose - если True, то проигрыш, если tuple, то было столкновение с яблоком и нужно отобразить партиклы
-    if lose is not True:
-        lose = move(hero, dest)
+    lose = is_wall(hero, dest)
+    if type(lose) is list:
+        for shift in range(40, 0, -10):
+            hero.move(lose[0], lose[1], dest, shift)
 
     if type(lose) == tuple:
         particle_count = 5
@@ -500,7 +510,6 @@ while running:
         font = pygame.font.Font(None, 30)
         screen.blit(font.render(f"Ваш счёт:{points}",
                                 1, pygame.Color('green')), (250, 20, 100, 100))
-
 
     clock.tick(FPS)
     pygame.display.flip()
