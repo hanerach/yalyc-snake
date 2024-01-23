@@ -12,6 +12,7 @@ tiles_group = pygame.sprite.Group()
 head_group = pygame.sprite.Group()
 tail_group = pygame.sprite.Group()
 
+
 # функция загрузки изображения
 def load_image(name: str, colorkey=None):
     fullname = os.path.join('data', name)
@@ -28,6 +29,7 @@ def load_image(name: str, colorkey=None):
     else:
         image = image.convert_alpha()
     return image
+
 
 # инициализация окна pygame
 pygame.init()
@@ -208,12 +210,14 @@ def load_level(filename: str):
     # дополняем каждую строку пустыми клетками ('.')
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
+
 # инициализация текстур для спрайтов и окружения
 tile_images = {
     'wall': load_image('textures/wall.png'),
     'empty': load_image('textures/water.png')
 }
-head_image = load_image('textures/head.png')
+
+head_image = load_image('textures/image17.png')
 tail_image = load_image('textures/tail.png')
 food_image = load_image('textures/apple.png')
 
@@ -279,6 +283,7 @@ class Food(pygame.sprite.Sprite):
         self.rect = self.rect = self.image.get_rect().move(tile_width * self.pos[0] + 5,
                                                            tile_width * self.pos[1] + 5)
 
+
 # класс клетки
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type: str, pos_x: int, pos_y: int):
@@ -292,19 +297,37 @@ class Tile(pygame.sprite.Sprite):
 
 # класс головы
 class Head(pygame.sprite.Sprite):
-    def __init__(self, pos_x: int, pos_y: int):
+    def __init__(self, pos_x: int, pos_y: int, sheet, columns=5, rows=2):
         super().__init__(head_group, all_sprites)
+        self.frames = []
+        self.cut_sheet(sheet, columns, rows)
+        self.cur_frame = 0
+        self.image = self.frames[self.cur_frame]
         # инициализация текстуры
         self.image = head_image
+
         # прямоугольник в котором спавнить спрайт
-        self.rect = self.image.get_rect().move(
-            tile_width * pos_x + 8, tile_height * pos_y + 7)
+        #self.rect = self.image.get_rect().move(
+            #tile_width * pos_x + 8, tile_height * pos_y + 7)
         # координаты
         self.pos = (pos_x, pos_y)
         # список для хранения координат хвоста
         self.tail_coords = []
         # список для хранения экземпляров хвоста
         self.tail_list = []
+
+    def cut_sheet(self, sheet, columns, rows):
+        self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
+                                sheet.get_height() // rows)
+        for j in range(rows):
+            for i in range(columns):
+                frame_location = (self.rect.w * i, self.rect.h * j)
+                self.frames.append(sheet.subsurface(pygame.Rect(
+                    frame_location, self.rect.size)))
+
+    def update(self):
+        self.cur_frame = (self.cur_frame + 1) % len(self.frames)
+        self.image = self.frames[self.cur_frame]
 
     def move(self, x: int, y: int):
         # добавляем координаты до передвежения
@@ -380,7 +403,7 @@ def generate_level(level):
                 Tile('wall', x, y)
             elif level[y][x] == '@':
                 Tile('empty', x, y)
-                new_player = Head(x, y)
+                new_player = Head(x, y, head_image)
                 level[y] = level[y][:x] + '.' + level[y][x + 1:]
     # вернем игрока, а также размер поля в клетках и сгенирируем яблоко
     generate_food(level, [(0, 0)])
@@ -475,6 +498,7 @@ while running:
             if event.key == pygame.K_q:
                 running = False
     # lose - если True, то проигрыш, если tuple, то было столкновение с яблоком и нужно отобразить партиклы
+
     if lose is not True:
         lose = move(hero, dest)
 
@@ -500,7 +524,6 @@ while running:
         font = pygame.font.Font(None, 30)
         screen.blit(font.render(f"Ваш счёт:{points}",
                                 1, pygame.Color('green')), (250, 20, 100, 100))
-
 
     clock.tick(FPS)
     pygame.display.flip()
