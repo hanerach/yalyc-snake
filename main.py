@@ -217,7 +217,7 @@ tile_images = {
     'empty': load_image('textures/water.png')
 }
 
-head_image = load_image('textures/image17.png')
+head_image = load_image('textures/image17 (2).png')
 tail_image = load_image('textures/tail.png')
 food_image = load_image('textures/apple.png')
 
@@ -304,7 +304,7 @@ class Head(pygame.sprite.Sprite):
         self.cur_frame = 0
         self.image = self.frames[self.cur_frame]
         # инициализация текстуры
-        self.image = head_image
+        #self.image = head_image
 
         # прямоугольник в котором спавнить спрайт
         #self.rect = self.image.get_rect().move(
@@ -488,6 +488,7 @@ while running:
                     dest = 'down'
 
             if event.key == pygame.K_LEFT or event.key == pygame.K_a:
+
                 if dest != 'right':
                     dest = 'left'
 
@@ -498,7 +499,7 @@ while running:
             if event.key == pygame.K_q:
                 running = False
     # lose - если True, то проигрыш, если tuple, то было столкновение с яблоком и нужно отобразить партиклы
-
+    hero.update()
     if lose is not True:
         lose = move(hero, dest)
 
