@@ -12,6 +12,7 @@ tiles_group = pygame.sprite.Group()
 head_group = pygame.sprite.Group()
 tail_group = pygame.sprite.Group()
 
+
 # функция загрузки изображения
 def load_image(name: str, colorkey=None):
     fullname = os.path.join('data', name)
@@ -28,6 +29,7 @@ def load_image(name: str, colorkey=None):
     else:
         image = image.convert_alpha()
     return image
+
 
 # инициализация окна pygame
 pygame.init()
@@ -208,6 +210,7 @@ def load_level(filename: str):
     # дополняем каждую строку пустыми клетками ('.')
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
+
 # инициализация текстур для спрайтов и окружения
 tile_images = {
     'wall': load_image('textures/wall.png'),
@@ -278,6 +281,7 @@ class Food(pygame.sprite.Sprite):
         self.pos = (x, y)
         self.rect = self.rect = self.image.get_rect().move(tile_width * self.pos[0] + 5,
                                                            tile_width * self.pos[1] + 5)
+
 
 # класс клетки
 class Tile(pygame.sprite.Sprite):
@@ -500,7 +504,6 @@ while running:
         font = pygame.font.Font(None, 30)
         screen.blit(font.render(f"Ваш счёт:{points}",
                                 1, pygame.Color('green')), (250, 20, 100, 100))
-
 
     clock.tick(FPS)
     pygame.display.flip()
